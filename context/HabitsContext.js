@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useReducer, useRef, useState } from 'react';
 import { Storage } from 'expo-sqlite/kv-store';
+import { getDevOffset, loadDevOffset, setDevOffset } from '../dev/devTime';
 
 const HabitsContext = createContext(null);
 const STORAGE_KEY = 'habits';
@@ -13,8 +14,17 @@ function formatDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
+// Single source of truth for "what day is it" — everything in this file
+// (and every screen) goes through this instead of calling `new Date()`
+// directly. In a dev build this is nudged forward by the debug panel's
+// simulated-day offset; getDevOffset() always returns 0 outside __DEV__,
+// so a production build behaves exactly like plain `new Date()`.
 function getTodayKey() {
-  return formatDateKey(new Date());
+  const date = new Date();
+  if (__DEV__) {
+    date.setDate(date.getDate() + getDevOffset());
+  }
+  return formatDateKey(date);
 }
 
 // 'YYYY-MM-DD' strings sort the same lexicographically as chronologically,
@@ -81,6 +91,14 @@ function computeGapDays(habit, todayKey) {
     cursorKey = addDays(cursorKey, 1);
   }
   return gapDates;
+}
+
+// Shared by the initial hydration and by the dev debug panel's "advance
+// simulated day" actions, so both trigger the exact same gap-detection logic.
+function computeAllGaps(habitsList, todayKey) {
+  return habitsList
+    .map((habit) => ({ habitId: habit.id, dates: computeGapDays(habit, todayKey) }))
+    .filter((gap) => gap.dates.length > 0);
 }
 
 function habitsReducer(state, action) {
@@ -155,13 +173,12 @@ export function HabitsProvider({ children }) {
     let isMounted = true;
     (async () => {
       try {
+        await loadDevOffset(); // must resolve before getTodayKey() is used below
         const stored = await Storage.getItem(STORAGE_KEY);
         const parsed = stored ? JSON.parse(stored) : [];
         const todayKey = getTodayKey();
         const migrated = parsed.map(migrateHabit);
-        const gaps = migrated
-          .map((habit) => ({ habitId: habit.id, dates: computeGapDays(habit, todayKey) }))
-          .filter((gap) => gap.dates.length > 0);
+        const gaps = computeAllGaps(migrated, todayKey);
 
         if (isMounted) {
           dispatch({ type: 'HYDRATE', payload: migrated });
@@ -210,6 +227,24 @@ export function HabitsProvider({ children }) {
     setPendingGaps([]);
   };
 
+  // Re-runs gap detection against the current habits + current (possibly
+  // simulated) today. Setting pendingGaps here is also what forces every
+  // screen reading from this context to re-render and pick up the new
+  // getTodayKey() — the day offset itself lives outside React state (see
+  // dev/devTime.js), so without this the UI wouldn't otherwise notice it changed.
+  const recomputeGaps = () => {
+    setPendingGaps(computeAllGaps(habits, getTodayKey()));
+  };
+
+  // Dev-only: advances the simulated day by `days` and immediately re-checks
+  // for newly-exposed gaps, so you can watch the streak/prompt behavior
+  // without closing and reopening the app. No-op outside __DEV__.
+  const advanceSimulatedDay = async (days) => {
+    if (!__DEV__) return;
+    await setDevOffset(getDevOffset() + days);
+    recomputeGaps();
+  };
+
   return (
     <HabitsContext.Provider
       value={{
@@ -222,6 +257,7 @@ export function HabitsProvider({ children }) {
         pendingGaps,
         resolveGap,
         resolveAllRemaining,
+        advanceSimulatedDay,
       }}
     >
       {children}

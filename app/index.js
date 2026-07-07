@@ -1,5 +1,6 @@
 import { Link } from 'expo-router';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import DevTimePanel from '../components/DevTimePanel';
 import { useHabits } from '../context/HabitsContext';
 
 function HabitCard({ habit }) {
@@ -72,6 +73,8 @@ export default function Home() {
       {habits.map((habit) => (
         <HabitCard key={habit.id} habit={habit} />
       ))}
+
+      {__DEV__ && <DevTimePanel />}
     </ScrollView>
   );
 }
