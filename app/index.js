@@ -1,7 +1,18 @@
 import { Link } from 'expo-router';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import DevTimePanel from '../components/DevTimePanel';
 import { useHabits } from '../context/HabitsContext';
+import { useTodaysIntention } from '../hooks/useTodaysIntention';
 
 function HabitCard({ habit }) {
   const { completeHabit, deleteHabit, getTodayKey, getCurrentStreak } = useHabits();
@@ -60,8 +71,10 @@ function HabitCard({ habit }) {
 
 export default function Home() {
   const { habits, isLoading } = useHabits();
+  const { intention, setIntention, hasSetToday, isLoading: intentionLoading } = useTodaysIntention();
+  const [bannerDismissed, setBannerDismissed] = useState(false);
 
-  if (isLoading) {
+  if (isLoading || intentionLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#222" />
@@ -71,6 +84,23 @@ export default function Home() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {!hasSetToday && !bannerDismissed && (
+        <View style={styles.nudgeBanner}>
+          <Text style={styles.nudgeText}>Haven't set an intention for today yet.</Text>
+          <TouchableOpacity onPress={() => setBannerDismissed(true)} hitSlop={8}>
+            <Text style={styles.nudgeDismiss}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <TextInput
+        style={styles.intentionInput}
+        value={intention}
+        onChangeText={setIntention}
+        placeholder="ex: be present"
+        placeholderTextColor="#ccc"
+      />
+
       <Link href="/create-habit" asChild>
         <TouchableOpacity style={styles.addButton}>
           <Text style={styles.addButtonText}>+ Add Habit</Text>
@@ -104,6 +134,34 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 32,
+  },
+  nudgeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+  },
+  nudgeText: {
+    color: '#777',
+    fontSize: 13,
+    flex: 1,
+    marginRight: 8,
+  },
+  nudgeDismiss: {
+    color: '#aaa',
+    fontSize: 16,
+  },
+  intentionInput: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingVertical: 10,
+    fontSize: 16,
+    color: '#222',
+    marginBottom: 20,
   },
   addButton: {
     backgroundColor: '#222',

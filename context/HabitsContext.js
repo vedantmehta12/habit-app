@@ -19,7 +19,7 @@ function formatDateKey(date) {
 // directly. In a dev build this is nudged forward by the debug panel's
 // simulated-day offset; getDevOffset() always returns 0 outside __DEV__,
 // so a production build behaves exactly like plain `new Date()`.
-function getTodayKey() {
+export function getTodayKey() {
   const date = new Date();
   if (__DEV__) {
     date.setDate(date.getDate() + getDevOffset());
