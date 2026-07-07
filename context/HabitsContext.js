@@ -33,6 +33,9 @@ function addDays(dateKey, delta) {
 // Walks backward from today through the log, counting consecutive full/mini
 // days. Today itself only counts if already logged — if today hasn't been
 // completed yet, the streak from prior days still holds until the day ends.
+// Gap days that haven't been committed to the log yet (still pending a
+// friction-capture prompt) simply aren't there, so the streak stays at its
+// pre-gap value until that prompt is resolved.
 function getCurrentStreak(log, todayKey) {
   let streak = 0;
   let cursorKey = todayKey;
@@ -53,42 +56,43 @@ function getCurrentStreak(log, todayKey) {
 // Old habits (saved before the dated log existed) had streak/lastCompletedDate/
 // lastCompletionType instead of a log. Converts them the first time they're loaded.
 function migrateHabit(habit) {
-  if (habit.log) return habit;
+  if (habit.log) return { skipReasons: {}, ...habit };
   const { streak, lastCompletedDate, lastCompletionType, ...rest } = habit;
   const log = lastCompletedDate ? { [lastCompletedDate]: lastCompletionType } : {};
-  return { ...rest, log, createdDate: lastCompletedDate || getTodayKey() };
+  return { ...rest, log, createdDate: lastCompletedDate || getTodayKey(), skipReasons: {} };
 }
 
-// Fills in 'skipped' for any day between the last logged day (or the habit's
-// creation date, if nothing's logged yet) and yesterday. Never touches today —
-// today's outcome isn't decided until the day is actually over.
-function backfillSkippedDays(habit, todayKey) {
+// Finds which days *would* be backfilled as "skipped" — from the day after
+// the last logged day (or the habit's creation date, if nothing's logged yet)
+// through yesterday. Never includes today — today's outcome isn't decided
+// until the day is actually over. Doesn't write anything; just reports the gap
+// so a friction-capture prompt can be shown before it's committed to the log.
+function computeGapDays(habit, todayKey) {
   const yesterdayKey = addDays(todayKey, -1);
   const loggedKeys = Object.keys(habit.log).sort();
   const lastLoggedKey = loggedKeys.length > 0 ? loggedKeys[loggedKeys.length - 1] : null;
   let cursorKey = lastLoggedKey ? addDays(lastLoggedKey, 1) : habit.createdDate;
 
-  const updatedLog = { ...habit.log };
+  const gapDates = [];
   while (cursorKey <= yesterdayKey) {
-    if (!updatedLog[cursorKey]) {
-      updatedLog[cursorKey] = 'skipped';
+    if (!habit.log[cursorKey]) {
+      gapDates.push(cursorKey);
     }
     cursorKey = addDays(cursorKey, 1);
   }
-  return { ...habit, log: updatedLog };
+  return gapDates;
 }
 
 function habitsReducer(state, action) {
   switch (action.type) {
-    case 'HYDRATE': {
-      const todayKey = getTodayKey();
-      return action.payload.map((habit) => backfillSkippedDays(migrateHabit(habit), todayKey));
-    }
+    case 'HYDRATE':
+      return action.payload;
     case 'ADD_HABIT': {
       const newHabit = {
         id: Date.now().toString(),
         createdDate: getTodayKey(),
         log: {},
+        skipReasons: {},
         ...action.payload,
       };
       return [...state, newHabit];
@@ -104,6 +108,36 @@ function habitsReducer(state, action) {
         };
       });
     }
+    case 'RESOLVE_GAP': {
+      const { habitId, resolutions } = action.payload;
+      return state.map((habit) => {
+        if (habit.id !== habitId) return habit;
+        const updatedLog = { ...habit.log };
+        const updatedSkipReasons = { ...habit.skipReasons };
+        resolutions.forEach(({ date, reason, note }) => {
+          updatedLog[date] = 'skipped';
+          if (reason) {
+            updatedSkipReasons[date] = note ? { reason, note } : { reason };
+          }
+        });
+        return { ...habit, log: updatedLog, skipReasons: updatedSkipReasons };
+      });
+    }
+    case 'RESOLVE_ALL_REMAINING': {
+      const { gaps, reason, note } = action.payload;
+      const datesByHabitId = new Map(gaps.map((gap) => [gap.habitId, gap.dates]));
+      return state.map((habit) => {
+        const dates = datesByHabitId.get(habit.id);
+        if (!dates) return habit;
+        const updatedLog = { ...habit.log };
+        const updatedSkipReasons = { ...habit.skipReasons };
+        dates.forEach((date) => {
+          updatedLog[date] = 'skipped';
+          updatedSkipReasons[date] = note ? { reason, note } : { reason };
+        });
+        return { ...habit, log: updatedLog, skipReasons: updatedSkipReasons };
+      });
+    }
     default:
       return state;
   }
@@ -112,16 +146,27 @@ function habitsReducer(state, action) {
 export function HabitsProvider({ children }) {
   const [habits, dispatch] = useReducer(habitsReducer, []);
   const [isLoading, setIsLoading] = useState(true);
+  const [pendingGaps, setPendingGaps] = useState([]);
   const hasHydrated = useRef(false);
 
-  // Load whatever was saved from the last session, once, on app start.
+  // Load whatever was saved from the last session, once, on app start, and
+  // work out which habits have missed days awaiting a friction-capture prompt.
   useEffect(() => {
     let isMounted = true;
     (async () => {
       try {
         const stored = await Storage.getItem(STORAGE_KEY);
         const parsed = stored ? JSON.parse(stored) : [];
-        if (isMounted) dispatch({ type: 'HYDRATE', payload: parsed });
+        const todayKey = getTodayKey();
+        const migrated = parsed.map(migrateHabit);
+        const gaps = migrated
+          .map((habit) => ({ habitId: habit.id, dates: computeGapDays(habit, todayKey) }))
+          .filter((gap) => gap.dates.length > 0);
+
+        if (isMounted) {
+          dispatch({ type: 'HYDRATE', payload: migrated });
+          setPendingGaps(gaps);
+        }
       } catch (error) {
         console.warn('Failed to load saved habits, starting fresh.', error);
       } finally {
@@ -150,9 +195,34 @@ export function HabitsProvider({ children }) {
   const completeHabit = (id, completionType) =>
     dispatch({ type: 'COMPLETE_HABIT', payload: { id, completionType } });
 
+  // resolutions: [{ date, reason?, note? }] — one entry per date in that
+  // habit's gap. Reason/note omitted means "dismissed, no reason given."
+  const resolveGap = (habitId, resolutions) => {
+    dispatch({ type: 'RESOLVE_GAP', payload: { habitId, resolutions } });
+    setPendingGaps((prev) => prev.filter((gap) => gap.habitId !== habitId));
+  };
+
+  // Applies one reason to every date of every habit still waiting in the
+  // queue (including any not-yet-answered days of the habit on screen), then
+  // empties the queue in one shot — backs the "Same reason for all remaining" button.
+  const resolveAllRemaining = (reason, note) => {
+    dispatch({ type: 'RESOLVE_ALL_REMAINING', payload: { gaps: pendingGaps, reason, note } });
+    setPendingGaps([]);
+  };
+
   return (
     <HabitsContext.Provider
-      value={{ habits, addHabit, completeHabit, getTodayKey, getCurrentStreak, isLoading }}
+      value={{
+        habits,
+        addHabit,
+        completeHabit,
+        getTodayKey,
+        getCurrentStreak,
+        isLoading,
+        pendingGaps,
+        resolveGap,
+        resolveAllRemaining,
+      }}
     >
       {children}
     </HabitsContext.Provider>
