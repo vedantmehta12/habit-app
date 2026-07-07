@@ -156,6 +156,8 @@ function habitsReducer(state, action) {
         return { ...habit, log: updatedLog, skipReasons: updatedSkipReasons };
       });
     }
+    case 'DELETE_HABIT':
+      return state.filter((habit) => habit.id !== action.payload.id);
     default:
       return state;
   }
@@ -212,6 +214,16 @@ export function HabitsProvider({ children }) {
   const completeHabit = (id, completionType) =>
     dispatch({ type: 'COMPLETE_HABIT', payload: { id, completionType } });
 
+  // Removes the habit (and its whole log/skipReasons with it, since they live
+  // on the same object) — the next save-effect run persists the shorter array,
+  // which is what actually clears it out of storage. Also drops any pending
+  // gap for this habit, so a deleted habit can't get stuck at the front of the
+  // friction-capture queue forever.
+  const deleteHabit = (id) => {
+    dispatch({ type: 'DELETE_HABIT', payload: { id } });
+    setPendingGaps((prev) => prev.filter((gap) => gap.habitId !== id));
+  };
+
   // resolutions: [{ date, reason?, note? }] — one entry per date in that
   // habit's gap. Reason/note omitted means "dismissed, no reason given."
   const resolveGap = (habitId, resolutions) => {
@@ -251,6 +263,7 @@ export function HabitsProvider({ children }) {
         habits,
         addHabit,
         completeHabit,
+        deleteHabit,
         getTodayKey,
         getCurrentStreak,
         isLoading,

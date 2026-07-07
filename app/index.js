@@ -1,10 +1,10 @@
 import { Link } from 'expo-router';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DevTimePanel from '../components/DevTimePanel';
 import { useHabits } from '../context/HabitsContext';
 
 function HabitCard({ habit }) {
-  const { completeHabit, getTodayKey, getCurrentStreak } = useHabits();
+  const { completeHabit, deleteHabit, getTodayKey, getCurrentStreak } = useHabits();
   const todayKey = getTodayKey();
   const doneToday = habit.log[todayKey] === 'full' || habit.log[todayKey] === 'mini';
   const streak = getCurrentStreak(habit.log, todayKey);
@@ -14,8 +14,19 @@ function HabitCard({ habit }) {
   const fullLabel =
     habit.goalType === 'binary' ? 'Complete' : `${habit.fullTarget} ${habit.unit}`;
 
+  const handleLongPress = () => {
+    Alert.alert(`Delete ${habit.name}?`, "This can't be undone.", [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteHabit(habit.id) },
+    ]);
+  };
+
   return (
-    <View style={[styles.card, { borderColor: habit.color }]}>
+    <TouchableOpacity
+      style={[styles.card, { borderColor: habit.color }]}
+      onLongPress={handleLongPress}
+      activeOpacity={0.9}
+    >
       <View style={styles.cardHeader}>
         <Text style={styles.emoji}>{habit.emoji}</Text>
         <View style={styles.cardHeaderText}>
@@ -43,7 +54,7 @@ function HabitCard({ habit }) {
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
