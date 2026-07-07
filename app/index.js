@@ -1,5 +1,5 @@
 import { Link } from 'expo-router';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useHabits } from '../context/HabitsContext';
 
 function HabitCard({ habit }) {
@@ -45,7 +45,15 @@ function HabitCard({ habit }) {
 }
 
 export default function Home() {
-  const { habits } = useHabits();
+  const { habits, isLoading } = useHabits();
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#222" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -70,6 +78,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     padding: 16,

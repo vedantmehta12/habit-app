@@ -1,6 +1,8 @@
-import { createContext, useContext, useReducer } from 'react';
+import { createContext, useContext, useEffect, useReducer, useRef, useState } from 'react';
+import { Storage } from 'expo-sqlite/kv-store';
 
 const HabitsContext = createContext(null);
+const STORAGE_KEY = 'habits';
 
 // Uses local date parts instead of toISOString() (which is UTC) so the
 // "day" boundary matches the user's actual midnight, not GMT's.
@@ -14,6 +16,8 @@ function getTodayKey() {
 
 function habitsReducer(state, action) {
   switch (action.type) {
+    case 'HYDRATE':
+      return action.payload;
     case 'ADD_HABIT': {
       const newHabit = {
         id: Date.now().toString(),
@@ -44,6 +48,39 @@ function habitsReducer(state, action) {
 
 export function HabitsProvider({ children }) {
   const [habits, dispatch] = useReducer(habitsReducer, []);
+  const [isLoading, setIsLoading] = useState(true);
+  const hasHydrated = useRef(false);
+
+  // Load whatever was saved from the last session, once, on app start.
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const stored = await Storage.getItem(STORAGE_KEY);
+        const parsed = stored ? JSON.parse(stored) : [];
+        if (isMounted) dispatch({ type: 'HYDRATE', payload: parsed });
+      } catch (error) {
+        console.warn('Failed to load saved habits, starting fresh.', error);
+      } finally {
+        if (isMounted) {
+          hasHydrated.current = true;
+          setIsLoading(false);
+        }
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Save on every change, but not before the initial load finishes —
+  // otherwise the empty starting state would overwrite what was saved last time.
+  useEffect(() => {
+    if (!hasHydrated.current) return;
+    Storage.setItem(STORAGE_KEY, JSON.stringify(habits)).catch((error) =>
+      console.warn('Failed to save habits.', error)
+    );
+  }, [habits]);
 
   const addHabit = (habit) => dispatch({ type: 'ADD_HABIT', payload: habit });
 
@@ -51,7 +88,7 @@ export function HabitsProvider({ children }) {
     dispatch({ type: 'COMPLETE_HABIT', payload: { id, completionType } });
 
   return (
-    <HabitsContext.Provider value={{ habits, addHabit, completeHabit, getTodayKey }}>
+    <HabitsContext.Provider value={{ habits, addHabit, completeHabit, getTodayKey, isLoading }}>
       {children}
     </HabitsContext.Provider>
   );
