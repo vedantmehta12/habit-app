@@ -3,8 +3,10 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View
 import { useHabits } from '../context/HabitsContext';
 
 function HabitCard({ habit }) {
-  const { completeHabit, getTodayKey } = useHabits();
-  const doneToday = habit.lastCompletedDate === getTodayKey();
+  const { completeHabit, getTodayKey, getCurrentStreak } = useHabits();
+  const todayKey = getTodayKey();
+  const doneToday = habit.log[todayKey] === 'full' || habit.log[todayKey] === 'mini';
+  const streak = getCurrentStreak(habit.log, todayKey);
 
   const miniLabel =
     habit.goalType === 'binary' ? habit.miniDescription : `${habit.miniThreshold} ${habit.unit}`;
@@ -17,7 +19,7 @@ function HabitCard({ habit }) {
         <Text style={styles.emoji}>{habit.emoji}</Text>
         <View style={styles.cardHeaderText}>
           <Text style={styles.habitName}>{habit.name}</Text>
-          <Text style={styles.streak}>🔥 {habit.streak} day{habit.streak === 1 ? '' : 's'}</Text>
+          <Text style={styles.streak}>🔥 {streak} day{streak === 1 ? '' : 's'}</Text>
         </View>
       </View>
 
