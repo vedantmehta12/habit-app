@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import DevTimePanel from '../components/DevTimePanel';
+import JournalPromptCard from '../components/JournalPromptCard';
 import { useHabits } from '../context/HabitsContext';
 import { useTodaysIntention } from '../hooks/useTodaysIntention';
 
@@ -100,6 +101,8 @@ export default function Home() {
         placeholder="ex: be present"
         placeholderTextColor="#ccc"
       />
+
+      <JournalPromptCard />
 
       <Link href="/create-habit" asChild>
         <TouchableOpacity style={styles.addButton}>

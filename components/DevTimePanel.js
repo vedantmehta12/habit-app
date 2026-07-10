@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useHabits } from '../context/HabitsContext';
+import { useJournalPrompt } from '../hooks/useJournalPrompt';
 
 export default function DevTimePanel() {
   const { getTodayKey, advanceSimulatedDay } = useHabits();
+  const { scenario, prompt } = useJournalPrompt();
   const [jumpDays, setJumpDays] = useState('');
 
   const handleJump = () => {
@@ -33,6 +35,13 @@ export default function DevTimePanel() {
           <Text style={styles.buttonText}>Jump</Text>
         </TouchableOpacity>
       </View>
+
+      {prompt && (
+        <View style={styles.promptPreview}>
+          <Text style={styles.promptScenario}>journal scenario: {scenario}</Text>
+          <Text style={styles.promptText}>{prompt.text}</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -76,5 +85,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     fontSize: 13,
+  },
+  promptPreview: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#e0c080',
+  },
+  promptScenario: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8a6d3b',
+    marginBottom: 2,
+  },
+  promptText: {
+    fontSize: 13,
+    color: '#5c4a1f',
+    fontStyle: 'italic',
   },
 });
