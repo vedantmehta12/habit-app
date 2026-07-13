@@ -85,6 +85,12 @@ export default function Home() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Link href="/settings" asChild>
+        <TouchableOpacity style={styles.settingsLink}>
+          <Text style={styles.settingsLinkText}>Settings</Text>
+        </TouchableOpacity>
+      </Link>
+
       {!hasSetToday && !bannerDismissed && (
         <View style={styles.nudgeBanner}>
           <Text style={styles.nudgeText}>Haven't set an intention for today yet.</Text>
@@ -137,6 +143,15 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 32,
+  },
+  settingsLink: {
+    alignSelf: 'flex-end',
+    marginBottom: 10,
+  },
+  settingsLinkText: {
+    color: '#888',
+    fontSize: 13,
+    fontWeight: '600',
   },
   nudgeBanner: {
     flexDirection: 'row',
