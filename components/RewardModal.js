@@ -1,4 +1,5 @@
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useHabits } from '../context/HabitsContext';
 
 function pluralize(count, unit) {
   return `${unit}${count === 1 ? '' : 's'}`;
@@ -31,7 +32,27 @@ function formatProgressLabel(progress) {
 }
 
 export default function RewardModal({ visible, habit, progress, onClose }) {
+  const { setRewardShowProgress } = useHabits();
+
   if (!visible || !habit?.reward || !progress) return null;
+
+  const handleSkip = () => {
+    Alert.alert(
+      'Hide reward progress?',
+      "The progress badge won't show on this habit's card anymore.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Hide it',
+          style: 'destructive',
+          onPress: () => {
+            setRewardShowProgress(habit.id, false);
+            onClose();
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <Modal visible transparent animationType="fade">
@@ -55,6 +76,10 @@ export default function RewardModal({ visible, habit, progress, onClose }) {
           <Text style={styles.label}>Current progress</Text>
           <Text style={styles.value}>{formatProgressLabel(progress)}</Text>
           <Text style={styles.percentText}>{Math.round(progress.progress * 100)}%</Text>
+
+          <TouchableOpacity style={styles.skipLink} onPress={handleSkip}>
+            <Text style={styles.skipLinkText}>Skip — don't show this progress badge again</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -117,5 +142,14 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     color: '#222',
+  },
+  skipLink: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  skipLinkText: {
+    fontSize: 13,
+    color: '#999',
+    fontWeight: '600',
   },
 });

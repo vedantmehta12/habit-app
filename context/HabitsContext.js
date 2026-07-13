@@ -169,6 +169,13 @@ function habitsReducer(state, action) {
         };
       });
     }
+    case 'SET_REWARD_SHOW_PROGRESS': {
+      const { habitId, showProgress } = action.payload;
+      return state.map((habit) => {
+        if (habit.id !== habitId || !habit.reward) return habit;
+        return { ...habit, reward: { ...habit.reward, showProgress } };
+      });
+    }
     case 'DELETE_HABIT':
       return state.filter((habit) => habit.id !== action.payload.id);
     default:
@@ -235,6 +242,11 @@ export function HabitsProvider({ children }) {
   const markRewardNotified = (habitId, threshold) =>
     dispatch({ type: 'MARK_REWARD_NOTIFIED', payload: { habitId, threshold } });
 
+  // Lets a habit's reward progress badge be dismissed from the reward modal
+  // itself, rather than only being settable at creation time.
+  const setRewardShowProgress = (habitId, showProgress) =>
+    dispatch({ type: 'SET_REWARD_SHOW_PROGRESS', payload: { habitId, showProgress } });
+
   const deleteHabit = (id) => {
     dispatch({ type: 'DELETE_HABIT', payload: { id } });
     setPendingGaps((prev) => prev.filter((gap) => gap.habitId !== id));
@@ -280,6 +292,7 @@ export function HabitsProvider({ children }) {
         addHabit,
         completeHabit,
         markRewardNotified,
+        setRewardShowProgress,
         deleteHabit,
         getTodayKey,
         getCurrentStreak,
