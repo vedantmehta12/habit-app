@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useHabits } from '../context/HabitsContext';
+import { getPeriodUnit } from '../reward/rewardProgress';
 
 const EMOJI_OPTIONS = ['💪', '📚', '🏃', '🧘', '💧', '😴', '✍️', '🎯'];
 const COLOR_OPTIONS = [
@@ -373,7 +374,7 @@ export default function CreateHabit() {
 
           {rewardMetricType === 'streak' && (
             <>
-              <Text style={styles.label}>Consecutive days</Text>
+              <Text style={styles.label}>Consecutive {getPeriodUnit(goalPeriod)}s</Text>
               <TextInput
                 style={styles.input}
                 value={rewardTargetDays}

@@ -1,8 +1,12 @@
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-function formatGoalLabel(goal) {
+function pluralize(count, unit) {
+  return `${unit}${count === 1 ? '' : 's'}`;
+}
+
+function formatGoalLabel(goal, periodUnit) {
   if (goal.metricType === 'streak') {
-    return `${goal.targetDays} consecutive day${goal.targetDays === 1 ? '' : 's'}`;
+    return `${goal.targetDays} consecutive ${pluralize(goal.targetDays, periodUnit)}`;
   }
   if (goal.metricType === 'percentage') {
     return `${goal.targetPercentage}% completion over ${goal.windowDays} days`;
@@ -15,7 +19,7 @@ function formatGoalLabel(goal) {
 
 function formatProgressLabel(progress) {
   if (progress.metricType === 'streak') {
-    return `${progress.current} / ${progress.target} days`;
+    return `${progress.current} / ${progress.target} ${pluralize(progress.target, progress.periodUnit)}`;
   }
   if (progress.metricType === 'percentage') {
     return `${progress.current}% / ${progress.target}%`;
@@ -46,7 +50,7 @@ export default function RewardModal({ visible, habit, progress, onClose }) {
           <View style={styles.divider} />
 
           <Text style={styles.label}>Goal</Text>
-          <Text style={styles.value}>{formatGoalLabel(habit.reward.goal)}</Text>
+          <Text style={styles.value}>{formatGoalLabel(habit.reward.goal, progress.periodUnit)}</Text>
 
           <Text style={styles.label}>Current progress</Text>
           <Text style={styles.value}>{formatProgressLabel(progress)}</Text>
