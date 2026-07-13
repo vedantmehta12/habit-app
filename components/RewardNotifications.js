@@ -40,7 +40,7 @@ async function fireNotification(title, body) {
 // SkipReasonPrompt. Watches every habit's reward progress and fires each
 // milestone notification exactly once, ever, per habit.
 export default function RewardNotifications() {
-  const { habits, getTodayKey, getCurrentStreak, markRewardNotified } = useHabits();
+  const { habits, getTodayKey, markRewardNotified } = useHabits();
   const router = useRouter();
 
   useEffect(() => {
@@ -53,8 +53,7 @@ export default function RewardNotifications() {
         if (!habit.reward) continue;
         if (isCancelled) return;
 
-        const currentStreak = getCurrentStreak(habit.log, todayKey);
-        const progress = getRewardProgress({ habit, todayKey, currentStreak });
+        const progress = getRewardProgress({ habit, todayKey });
         if (!progress) continue;
 
         const notified = habit.reward.notified || {};

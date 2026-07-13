@@ -33,7 +33,7 @@ function HabitCard({ habit }) {
     habit.goalType === 'binary' ? 'Complete' : `${habit.fullTarget} ${habit.unit}`;
 
   const rewardProgress = habit.reward
-    ? getRewardProgress({ habit, todayKey, currentStreak: streak })
+    ? getRewardProgress({ habit, todayKey })
     : null;
 
   // TEMPORARY — remove once the reward-progress math has been eyeballed
