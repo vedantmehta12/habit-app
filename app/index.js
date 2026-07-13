@@ -19,7 +19,8 @@ import { useTodaysIntention } from '../hooks/useTodaysIntention';
 import { getRewardProgress } from '../reward/rewardProgress';
 
 function HabitCard({ habit }) {
-  const { completeHabit, deleteHabit, getTodayKey, getCurrentStreak } = useHabits();
+  const { completeHabit, deleteHabit, getTodayKey, getCurrentStreak, setRewardShowProgress } =
+    useHabits();
   const { showRewardProgress: globalShowRewardProgress } = useSettings();
   const [rewardModalVisible, setRewardModalVisible] = useState(false);
   const todayKey = getTodayKey();
@@ -46,6 +47,16 @@ function HabitCard({ habit }) {
 
   const showRewardButton =
     globalShowRewardProgress && habit.reward?.showProgress && Boolean(rewardProgress);
+  // Shown instead of the full badge when a reward exists but its per-habit
+  // showProgress has been turned off — a muted toggle back on, so skipping
+  // it isn't a dead end. Still hidden entirely if the global setting is off.
+  const showRewardUndoButton =
+    globalShowRewardProgress && habit.reward && habit.reward.showProgress === false && Boolean(rewardProgress);
+
+  const handleShowRewardAgain = () => {
+    setRewardShowProgress(habit.id, true);
+    setRewardModalVisible(true);
+  };
 
   const handleLongPress = () => {
     Alert.alert(`Delete ${habit.name}?`, "This can't be undone.", [
@@ -77,6 +88,12 @@ function HabitCard({ habit }) {
             ) : (
               <Text style={styles.rewardButtonText}>{Math.round(rewardProgress.progress * 100)}%</Text>
             )}
+          </TouchableOpacity>
+        )}
+
+        {showRewardUndoButton && (
+          <TouchableOpacity style={styles.rewardUndoButton} onPress={handleShowRewardAgain}>
+            <Text style={styles.rewardUndoButtonIcon}>🎁</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -276,6 +293,21 @@ const styles = StyleSheet.create({
   },
   rewardButtonIcon: {
     fontSize: 20,
+  },
+  rewardUndoButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#ddd',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+    opacity: 0.5,
+  },
+  rewardUndoButtonIcon: {
+    fontSize: 18,
   },
   habitName: {
     fontSize: 18,

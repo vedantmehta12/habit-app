@@ -39,12 +39,11 @@ export default function RewardModal({ visible, habit, progress, onClose }) {
   const handleSkip = () => {
     Alert.alert(
       'Hide reward progress?',
-      "The progress badge won't show on this habit's card anymore.",
+      "This swaps the badge for a small muted icon on the habit's card — tap that anytime to bring it back.",
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Hide it',
-          style: 'destructive',
           onPress: () => {
             setRewardShowProgress(habit.id, false);
             onClose();
@@ -78,7 +77,7 @@ export default function RewardModal({ visible, habit, progress, onClose }) {
           <Text style={styles.percentText}>{Math.round(progress.progress * 100)}%</Text>
 
           <TouchableOpacity style={styles.skipLink} onPress={handleSkip}>
-            <Text style={styles.skipLinkText}>Skip — don't show this progress badge again</Text>
+            <Text style={styles.skipLinkText}>Hide this progress badge</Text>
           </TouchableOpacity>
         </View>
       </View>
