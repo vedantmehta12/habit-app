@@ -156,6 +156,19 @@ function habitsReducer(state, action) {
         return { ...habit, log: updatedLog, skipReasons: updatedSkipReasons };
       });
     }
+    case 'MARK_REWARD_NOTIFIED': {
+      const { habitId, threshold } = action.payload;
+      return state.map((habit) => {
+        if (habit.id !== habitId || !habit.reward) return habit;
+        return {
+          ...habit,
+          reward: {
+            ...habit.reward,
+            notified: { ...habit.reward.notified, [threshold]: true },
+          },
+        };
+      });
+    }
     case 'DELETE_HABIT':
       return state.filter((habit) => habit.id !== action.payload.id);
     default:
@@ -219,6 +232,9 @@ export function HabitsProvider({ children }) {
   // which is what actually clears it out of storage. Also drops any pending
   // gap for this habit, so a deleted habit can't get stuck at the front of the
   // friction-capture queue forever.
+  const markRewardNotified = (habitId, threshold) =>
+    dispatch({ type: 'MARK_REWARD_NOTIFIED', payload: { habitId, threshold } });
+
   const deleteHabit = (id) => {
     dispatch({ type: 'DELETE_HABIT', payload: { id } });
     setPendingGaps((prev) => prev.filter((gap) => gap.habitId !== id));
@@ -263,6 +279,7 @@ export function HabitsProvider({ children }) {
         habits,
         addHabit,
         completeHabit,
+        markRewardNotified,
         deleteHabit,
         getTodayKey,
         getCurrentStreak,
