@@ -12,11 +12,16 @@ import {
 } from 'react-native';
 import DevTimePanel from '../components/DevTimePanel';
 import JournalPromptCard from '../components/JournalPromptCard';
+import RewardModal from '../components/RewardModal';
 import { useHabits } from '../context/HabitsContext';
+import { useSettings } from '../context/SettingsContext';
 import { useTodaysIntention } from '../hooks/useTodaysIntention';
+import { getRewardProgress } from '../reward/rewardProgress';
 
 function HabitCard({ habit }) {
   const { completeHabit, deleteHabit, getTodayKey, getCurrentStreak } = useHabits();
+  const { showRewardProgress: globalShowRewardProgress } = useSettings();
+  const [rewardModalVisible, setRewardModalVisible] = useState(false);
   const todayKey = getTodayKey();
   const doneToday = habit.log[todayKey] === 'full' || habit.log[todayKey] === 'mini';
   const streak = getCurrentStreak(habit.log, todayKey);
@@ -25,6 +30,22 @@ function HabitCard({ habit }) {
     habit.goalType === 'binary' ? habit.miniDescription : `${habit.miniThreshold} ${habit.unit}`;
   const fullLabel =
     habit.goalType === 'binary' ? 'Complete' : `${habit.fullTarget} ${habit.unit}`;
+
+  const rewardProgress = habit.reward
+    ? getRewardProgress({ habit, todayKey, currentStreak: streak })
+    : null;
+
+  // TEMPORARY — remove once the reward-progress math has been eyeballed
+  // against real data. Logs for every habit with a reward regardless of
+  // whether the button is actually visible, so the toggles don't hide bugs.
+  if (__DEV__ && rewardProgress) {
+    console.log(
+      `[RewardProgress] ${habit.name}: metricType=${rewardProgress.metricType} current=${rewardProgress.current} target=${rewardProgress.target} ratio=${rewardProgress.ratio.toFixed(3)} progress=${rewardProgress.progress.toFixed(3)} isUnlocked=${rewardProgress.isUnlocked}`
+    );
+  }
+
+  const showRewardButton =
+    globalShowRewardProgress && habit.reward?.showProgress && Boolean(rewardProgress);
 
   const handleLongPress = () => {
     Alert.alert(`Delete ${habit.name}?`, "This can't be undone.", [
@@ -45,7 +66,27 @@ function HabitCard({ habit }) {
           <Text style={styles.habitName}>{habit.name}</Text>
           <Text style={styles.streak}>🔥 {streak} day{streak === 1 ? '' : 's'}</Text>
         </View>
+
+        {showRewardButton && (
+          <TouchableOpacity
+            style={[styles.rewardButton, rewardProgress.isUnlocked && styles.rewardButtonUnlocked]}
+            onPress={() => setRewardModalVisible(true)}
+          >
+            {rewardProgress.isUnlocked ? (
+              <Text style={styles.rewardButtonIcon}>🎁</Text>
+            ) : (
+              <Text style={styles.rewardButtonText}>{Math.round(rewardProgress.progress * 100)}%</Text>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
+
+      <RewardModal
+        visible={rewardModalVisible}
+        habit={habit}
+        progress={rewardProgress}
+        onClose={() => setRewardModalVisible(false)}
+      />
 
       <View style={styles.buttonRow}>
         <TouchableOpacity
@@ -215,6 +256,26 @@ const styles = StyleSheet.create({
   },
   cardHeaderText: {
     flex: 1,
+  },
+  rewardButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  rewardButtonUnlocked: {
+    backgroundColor: '#FFD93D',
+  },
+  rewardButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#333',
+  },
+  rewardButtonIcon: {
+    fontSize: 20,
   },
   habitName: {
     fontSize: 18,
