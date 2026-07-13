@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   Alert,
@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useHabits } from '../context/HabitsContext';
+import { getMiniSuggestions } from '../habits/miniSuggestions';
 import { getPeriodUnit } from '../reward/rewardProgress';
 
 const EMOJI_OPTIONS = ['💪', '📚', '🏃', '🧘', '💧', '😴', '✍️', '🎯'];
@@ -97,6 +98,13 @@ export default function CreateHabit() {
         const fullValue = Number(fullTarget);
         if (!fullTarget || Number.isNaN(fullValue) || fullValue <= 0) {
           return Alert.alert('Invalid goal', 'Enter a full goal number greater than 0.');
+        }
+        // Prefill a starting-point mini threshold at 25% of the full target
+        // the first time this step is reached — never overwrites a value
+        // the user already has, so going back and adjusting fullTarget
+        // won't stomp on an edit they've made.
+        if (!miniThreshold) {
+          setMiniThreshold(String(Math.max(1, Math.floor(fullValue * 0.25))));
         }
       }
       setStep(3);
@@ -203,6 +211,8 @@ export default function CreateHabit() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Stack.Screen options={{ title: name.trim() || 'New Habit' }} />
+
       <StepIndicator step={step} />
 
       {step === 1 && (
@@ -312,21 +322,30 @@ export default function CreateHabit() {
 
       {step === 3 && (
         <>
+          <Text style={styles.label}>What's the smallest version that still counts?</Text>
+
           {goalType === 'numeric' ? (
-            <>
-              <Text style={styles.label}>Mini goal (easier target)</Text>
-              <TextInput
-                style={styles.input}
-                value={miniThreshold}
-                onChangeText={setMiniThreshold}
-                placeholder="e.g. 2"
-                placeholderTextColor="#999"
-                keyboardType="numeric"
-              />
-            </>
+            <TextInput
+              style={styles.input}
+              value={miniThreshold}
+              onChangeText={setMiniThreshold}
+              placeholder="e.g. 2"
+              placeholderTextColor="#999"
+              keyboardType="numeric"
+            />
           ) : (
             <>
-              <Text style={styles.label}>Mini version (easier alternative)</Text>
+              <View style={styles.suggestionRow}>
+                {getMiniSuggestions(name).map((suggestion) => (
+                  <TouchableOpacity
+                    key={suggestion}
+                    style={styles.suggestionChip}
+                    onPress={() => setMiniDescription(suggestion)}
+                  >
+                    <Text style={styles.suggestionChipText}>{suggestion}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
               <TextInput
                 style={styles.input}
                 value={miniDescription}
@@ -561,6 +580,25 @@ const styles = StyleSheet.create({
   toggleTextSelected: {
     color: '#fff',
     fontWeight: '600',
+  },
+  suggestionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 10,
+  },
+  suggestionChip: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    backgroundColor: '#fafafa',
+  },
+  suggestionChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#333',
   },
   rewardToggleRow: {
     flexDirection: 'row',
