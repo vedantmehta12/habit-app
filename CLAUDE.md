@@ -27,3 +27,14 @@ Building a thin vertical slice first: one habit, create it, mark full/mini compl
 - One feature per commit, with a clear message
 - If a request is ambiguous or could be built two reasonable ways, ask or state the assumption before writing code
 - Don't add new dependencies without flagging it first
+
+## BUILD_STATE.md maintenance
+BUILD_STATE.md at the repo root is the running snapshot of this project. It is the handoff document for product conversations in other tools, and raw material for a recruiting narrative.
+
+After completing any change that ships a feature, fixes a non-trivial bug, or resolves an open decision, update BUILD_STATE.md in the same session:
+- Move items from "Decided but NOT yet built" to "What's BUILT" when shipped.
+- Add newly discovered bugs, constraints, or open questions.
+- Update the "Last updated" date.
+- Keep it terse. It's a snapshot, not a changelog — git already has the changelog.
+
+Do not update it for refactors, formatting, or work in progress.
