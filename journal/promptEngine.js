@@ -61,6 +61,12 @@ function anyHabitLoggedOn(habits, dateKey) {
 // history to look at. Deliberately not capped to LOOKBACK_DAYS: a long-time
 // user who just had a quiet last-7-days shouldn't be misread as brand new.
 function countLoggedDaysForFreshStartCheck(habits, referenceDay) {
+  // With zero habits there's nothing that could possibly be logged, and
+  // the walk below has no floor to stop at (earliestCreatedDate would be
+  // null, permanently disabling the break condition) — short-circuit
+  // before the loop instead of letting it spin forever.
+  if (habits.length === 0) return 0;
+
   const earliestCreatedDate = habits.reduce((earliest, habit) => {
     return !earliest || habit.createdDate < earliest ? habit.createdDate : earliest;
   }, null);
